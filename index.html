@@ -101,7 +101,6 @@
         .badge-success { background: rgba(34, 197, 94, 0.2); color: #86efac; }
         .badge-warning { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
         .badge-error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
-        .badge-neutral { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
         
         .alert {
             padding: 14px;
@@ -110,28 +109,10 @@
             margin-bottom: 16px;
         }
         
-        .alert-info {
-            background: rgba(59, 130, 246, 0.1);
-            border-color: #3b82f6;
-            color: #93c5fd;
-        }
-        
         .alert-success {
             background: rgba(34, 197, 94, 0.1);
             border-color: #22c55e;
             color: #86efac;
-        }
-        
-        .alert-warning {
-            background: rgba(245, 158, 11, 0.1);
-            border-color: #f59e0b;
-            color: #fcd34d;
-        }
-        
-        .alert-error {
-            background: rgba(239, 68, 68, 0.1);
-            border-color: #ef4444;
-            color: #fca5a5;
         }
         
         .stat-box {
@@ -186,6 +167,108 @@
             font-size: 12px;
             color: #94a3b8;
             margin-top: 4px;
+        }
+        
+        /* Chat styles */
+        .chat-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 999;
+            transition: all 0.3s;
+        }
+        
+        .chat-btn:hover {
+            background: #3a6447;
+            transform: scale(1.1);
+        }
+        
+        .chat-modal {
+            position: fixed;
+            bottom: 100px;
+            right: 24px;
+            width: 380px;
+            max-height: 600px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        
+        .chat-modal.open {
+            display: flex;
+        }
+        
+        .chat-header {
+            background: var(--primary);
+            color: white;
+            padding: 16px;
+            border-radius: 12px 12px 0 0;
+            font-weight: bold;
+        }
+        
+        .chat-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .chat-options {
+            display: grid;
+            gap: 8px;
+        }
+        
+        .chat-option-btn {
+            background: #334155;
+            border: 1px solid #475569;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        
+        .chat-option-btn:hover {
+            background: #475569;
+            border-color: var(--primary);
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            background: #0f172a;
+            border: 1px solid #475569;
+            color: #e2e8f0;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+        
+        @media (max-width: 640px) {
+            .chat-modal {
+                width: calc(100vw - 32px);
+                bottom: 80px;
+            }
         }
     </style>
 </head>
@@ -333,7 +416,105 @@
         </div>
     </div>
 
+    <!-- Chat Floating Button -->
+    <button class="chat-btn" onclick="toggleChat()" title="Search nonprofits">💬</button>
+
+    <!-- Chat Modal -->
+    <div id="chatModal" class="chat-modal">
+        <div class="chat-header">Nonprofit Lookup Bot</div>
+        <div class="chat-content" id="chatContent">
+            <div id="chatMessages"></div>
+            <div id="chatOptions" class="chat-options"></div>
+        </div>
+    </div>
+
     <script>
+        const nonprofits = {
+            'viet america society': { name: 'Viet America Society', assets: 456245, income: 1823122, gov: 1823122, spending: 1876774, direct: 150000 },
+            'charity usa': { name: 'Charity USA', assets: 500000, income: 2000000, gov: 400000, spending: 1800000, direct: 1600000 },
+            'global relief': { name: 'Global Relief Foundation', assets: 750000, income: 3000000, gov: 2700000, spending: 2800000, direct: 420000 },
+            'youth programs inc': { name: 'Youth Programs Inc', assets: 200000, income: 800000, gov: 160000, spending: 750000, direct: 600000 },
+            'education first': { name: 'Education First', assets: 1200000, income: 4500000, gov: 2700000, spending: 4200000, direct: 3780000 }
+        };
+
+        let chatOpen = false;
+
+        function toggleChat() {
+            chatOpen = !chatOpen;
+            document.getElementById('chatModal').classList.toggle('open');
+            if (chatOpen) initChat();
+        }
+
+        function initChat() {
+            const messagesDiv = document.getElementById('chatMessages');
+            const optionsDiv = document.getElementById('chatOptions');
+            
+            messagesDiv.innerHTML = '<div style="font-size: 13px; color: #cbd5e1;">👋 Hi! Search for a nonprofit to auto-fill the calculator. Try:<br/><em style="color: #94a3b8;">- Viet America Society<br/>- Education First<br/>- Global Relief</em></div>';
+            
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.className = 'search-input';
+            searchInput.placeholder = 'Search nonprofit name...';
+            searchInput.onkeyup = (e) => searchNonprofits(e.target.value);
+            optionsDiv.innerHTML = '';
+            optionsDiv.appendChild(searchInput);
+            
+            const suggestions = document.createElement('div');
+            suggestions.className = 'chat-options';
+            suggestions.id = 'suggestions';
+            Object.keys(nonprofits).forEach(key => {
+                const btn = document.createElement('button');
+                btn.className = 'chat-option-btn';
+                btn.textContent = nonprofits[key].name;
+                btn.onclick = () => loadNonprofit(key);
+                suggestions.appendChild(btn);
+            });
+            optionsDiv.appendChild(suggestions);
+        }
+
+        function searchNonprofits(query) {
+            const suggestions = document.getElementById('suggestions');
+            if (!suggestions) return;
+            
+            suggestions.innerHTML = '';
+            const matches = Object.keys(nonprofits).filter(key => 
+                key.includes(query.toLowerCase())
+            );
+            
+            if (matches.length === 0) {
+                const msg = document.createElement('div');
+                msg.style.cssText = 'font-size: 13px; color: #94a3b8; padding: 8px;';
+                msg.textContent = 'No matches found';
+                suggestions.appendChild(msg);
+            } else {
+                matches.forEach(key => {
+                    const btn = document.createElement('button');
+                    btn.className = 'chat-option-btn';
+                    btn.textContent = nonprofits[key].name;
+                    btn.onclick = () => loadNonprofit(key);
+                    suggestions.appendChild(btn);
+                });
+            }
+        }
+
+        function loadNonprofit(key) {
+            const org = nonprofits[key];
+            document.getElementById('totalAssets').value = org.assets;
+            document.getElementById('annualIncome').value = org.income;
+            document.getElementById('govRevenue').value = org.gov;
+            document.getElementById('totalSpending').value = org.spending;
+            document.getElementById('directSpending').value = org.direct;
+            document.getElementById('auditFindings').value = '0';
+            
+            const messagesDiv = document.getElementById('chatMessages');
+            messagesDiv.innerHTML = `<div style="font-size: 13px; color: #86efac;">✓ Loaded ${org.name}<br/><span style="color: #94a3b8;">Click "Calculate NPI" to analyze</span></div>`;
+            
+            setTimeout(() => {
+                document.getElementById('chatModal').classList.remove('open');
+                chatOpen = false;
+            }, 1200);
+        }
+
         function calculateNPI() {
             const totalAssets = parseFloat(document.getElementById('totalAssets').value) || 0;
             const annualIncome = parseFloat(document.getElementById('annualIncome').value) || 0;
@@ -347,115 +528,60 @@
                 return;
             }
 
-            // Calculate ratios
-            const aar = annualIncome > 0 ? totalAssets / annualIncome : 0; // Asset Accumulation Ratio
-            const odr = directSpending > 0 ? totalSpending / directSpending : totalSpending; // Overhead Distortion Ratio
-            
-            // NPI Score
+            const aar = annualIncome > 0 ? totalAssets / annualIncome : 0;
+            const odr = directSpending > 0 ? totalSpending / directSpending : totalSpending;
             const npiScore = aar * odr;
-
-            // Government dependency
             const govDep = annualIncome > 0 ? (govRevenue / annualIncome) * 100 : 0;
-
-            // Admin overhead
             const adminOH = totalSpending > 0 ? ((totalSpending - directSpending) / totalSpending) * 100 : 0;
 
-            // Risk level classification
-            let riskLevel, riskClass, riskColor;
+            let riskLevel, riskClass;
             if (npiScore < 0.5) {
                 riskLevel = 'Low Risk';
                 riskClass = 'badge-success';
-                riskColor = '#86efac';
             } else if (npiScore < 2.0) {
                 riskLevel = 'Moderate Risk';
                 riskClass = 'badge-warning';
-                riskColor = '#fcd34d';
             } else if (npiScore < 5.0) {
                 riskLevel = 'High Risk';
                 riskClass = 'badge-warning';
-                riskColor = '#fb923c';
             } else {
                 riskLevel = 'Critical Risk';
                 riskClass = 'badge-error';
-                riskColor = '#fca5a5';
             }
 
-            // Identify flags
             const flags = [];
-            
-            if (govDep > 80) {
-                flags.push({
-                    title: 'Extreme Government Dependency',
-                    desc: `${govDep.toFixed(1)}% of revenue is government-sourced. Organization functions as federal contractor, not charity.`
-                });
-            }
+            if (govDep > 80) flags.push({ title: 'Extreme Government Dependency', desc: `${govDep.toFixed(1)}% of revenue is government-sourced. Organization functions as federal contractor, not charity.` });
+            if (aar > 1) flags.push({ title: 'Asset Accumulation', desc: `Assets exceed 1 year of income (${aar.toFixed(2)}×). Suggests capital preservation rather than mission spending.` });
+            if (adminOH > 50) flags.push({ title: 'Extreme Overhead Distortion', desc: `${adminOH.toFixed(1)}% spent on non-program activities. Minimal direct service delivery.` });
+            if (directSpending < (totalSpending * 0.15)) flags.push({ title: 'Low Direct Service Rate', desc: `Only ${(directSpending / totalSpending * 100).toFixed(1)}% goes to direct programs.` });
+            if (auditFindings > 0) flags.push({ title: 'Audit Compliance Issues', desc: `${auditFindings} consecutive finding(s). Pattern of regulatory non-compliance.` });
 
-            if (aar > 1) {
-                flags.push({
-                    title: 'Asset Accumulation',
-                    desc: `Assets exceed 1 year of income (${aar.toFixed(2)}×). Suggests capital preservation rather than mission spending.`
-                });
-            }
-
-            if (adminOH > 50) {
-                flags.push({
-                    title: 'Extreme Overhead Distortion',
-                    desc: `${adminOH.toFixed(1)}% spent on non-program activities. Minimal direct service delivery.`
-                });
-            }
-
-            if (directSpending < (totalSpending * 0.15)) {
-                flags.push({
-                    title: 'Low Direct Service Rate',
-                    desc: `Only ${(directSpending / totalSpending * 100).toFixed(1)}% goes to direct programs. Indicative of overhead-heavy structure.`
-                });
-            }
-
-            if (auditFindings > 0) {
-                flags.push({
-                    title: 'Audit Compliance Issues',
-                    desc: `${auditFindings} consecutive finding(s). Pattern of regulatory non-compliance.`
-                });
-            }
-
-            // Display results
             document.getElementById('npiScore').textContent = npiScore.toFixed(2);
             document.getElementById('riskLevel').innerHTML = `<span class="badge ${riskClass}">${riskLevel}</span>`;
-            
             document.getElementById('aarValue').textContent = aar.toFixed(2);
             document.getElementById('aarBar').style.width = Math.min(aar * 25, 100) + '%';
-            
             document.getElementById('odrValue').textContent = odr.toFixed(2);
             document.getElementById('odrBar').style.width = Math.min(odr * 10, 100) + '%';
-            
             document.getElementById('govDep').textContent = govDep.toFixed(1) + '%';
             document.getElementById('adminOH').textContent = adminOH.toFixed(1) + '%';
 
-            // Render flags
             const flagsList = document.getElementById('flagsList');
             if (flags.length === 0) {
                 flagsList.innerHTML = '<div class="alert alert-success">No major red flags detected.</div>';
             } else {
-                flagsList.innerHTML = flags.map(f => `
-                    <div class="flag-item">
-                        <div class="flag-title">⚠ ${f.title}</div>
-                        <div class="flag-desc">${f.desc}</div>
-                    </div>
-                `).join('');
+                flagsList.innerHTML = flags.map(f => `<div class="flag-item"><div class="flag-title">⚠ ${f.title}</div><div class="flag-desc">${f.desc}</div></div>`).join('');
             }
 
             document.getElementById('results').style.display = 'block';
         }
 
         function loadTestData() {
-            // Viet America Society 2022 financials
             document.getElementById('totalAssets').value = '456245';
             document.getElementById('annualIncome').value = '1823122';
             document.getElementById('govRevenue').value = '1823122';
             document.getElementById('totalSpending').value = '1876774';
             document.getElementById('directSpending').value = '150000';
             document.getElementById('auditFindings').value = '0';
-            
             setTimeout(() => calculateNPI(), 100);
         }
 
@@ -469,7 +595,6 @@
             document.getElementById('results').style.display = 'none';
         }
 
-        // Load test data on page load for demo
         window.addEventListener('load', () => {
             loadTestData();
         });
